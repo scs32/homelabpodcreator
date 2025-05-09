@@ -116,6 +116,7 @@ podman ps --format '{{.Names}}' | grep -q "^tailscale-SERVICE_NAME$" || podman r
   -e TS_AUTHKEY="AUTH_KEY" \
   -e TS_STATE_DIR=/var/lib/tailscale \
   -e TS_HOSTNAME="$TS_NAME" \
+  -e TS_TAGS="tag:$TS_NAME" \
   -e TS_EXTRA_ARGS="--hostname=$TS_NAME --accept-routes" \
   TAILSCALE_IMAGE
 
