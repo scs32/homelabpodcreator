@@ -97,7 +97,7 @@ cat > run.sh << 'EOF_RUNSH'
 set -e
 
 # Initialize TS_NAME with a unique name for this Tailscale instance
-TS_NAME="SERVICE_NAME-$(date +%s | head -c 6)"
+TS_NAME="SERVICE_NAME"
 
 # Automatically remove existing containers for this service only
 echo "Removing existing SERVICE_NAME containers..."
