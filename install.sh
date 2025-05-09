@@ -6,7 +6,37 @@ echo "📦 Installing and launching Homepod Creator (Gen 3)..."
 WORKDIR="$(pwd)"
 REPO_BASE_URL="https://raw.githubusercontent.com/scs32/homelabpodcreator/main"
 
-# Download required files to current directory
+# --- Check and install podman ---
+if ! command -v podman >/dev/null 2>&1; then
+  echo "⚠️  podman not found. Attempting to install..."
+
+  if [[ -f /etc/debian_version ]]; then
+    sudo apt update
+    sudo apt install -y podman
+  else
+    echo "❌ Unsupported OS for auto-install of podman. Please install it manually."
+    exit 1
+  fi
+
+  echo "✅ podman installed successfully."
+fi
+
+# --- Check and install jq ---
+if ! command -v jq >/dev/null 2>&1; then
+  echo "⚠️  jq not found. Attempting to install..."
+
+  if [[ -f /etc/debian_version ]]; then
+    sudo apt update
+    sudo apt install -y jq
+  else
+    echo "❌ Unsupported OS for auto-install of jq. Please install it manually."
+    exit 1
+  fi
+
+  echo "✅ jq installed successfully."
+fi
+
+# --- Download homelab files ---
 echo "⬇️  Fetching files into: $WORKDIR"
 curl -fsSL "$REPO_BASE_URL/homelab.sh" -o homelab.sh
 curl -fsSL "$REPO_BASE_URL/create.sh"  -o create.sh
@@ -14,12 +44,12 @@ curl -fsSL "$REPO_BASE_URL/homelab.js" -o homelab.js
 
 chmod +x homelab.sh
 
-# Run the main script
+# --- Launch homelab.sh ---
 echo "🚀 Launching Homepod Creator..."
 ./homelab.sh
 
-# If it finishes successfully, clean up
+# --- Clean up ---
 echo "🧹 Cleaning up temporary files..."
 rm -f homelab.sh create.sh homelab.js
 
-echo "✅ Done! System is clean. Scripts and pod files were generated where needed."
+echo "✅ Done! Setup complete and system cleaned."
