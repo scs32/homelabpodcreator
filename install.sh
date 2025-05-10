@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "[INFO] Installing and launching Homepod Creator (Gen 3.5)..."
+echo "[INFO] Installing and launching Homepod Creator (Gen 4.0)..."
 
 WORKDIR="$(pwd)"
 REPO_BASE_URL="https://raw.githubusercontent.com/scs32/homelabpodcreator/main"
@@ -42,8 +42,17 @@ fi
 
 # --- Download all files ---
 FILES=(
-    "homelab.sh"
+    # Main orchestrator (replaces old homelab.sh)
+    "homelab-orchestrator.sh"
+    
+    # User interface components
+    "user-interface.sh"
+    "config-builder.sh"
+    
+    # Service database
     "homelab.js"
+    
+    # Deployment components
     "create.sh"
     "error-handler.sh"
     "logging-utils.sh"
@@ -53,6 +62,9 @@ FILES=(
     "generate-run-template.sh"
     "generate-diagnose-template.sh"
     "display-summary.sh"
+    
+    # Cleanup script
+    "cleanup.sh"
 )
 
 echo "[FETCH] Downloading core files into: $WORKDIR"
@@ -64,45 +76,16 @@ done
 # Make all scripts executable
 chmod +x *.sh
 
-# Create a cleanup script that will be run automatically when homelab.sh completes
-cat > cleanup.sh << 'EOF_CLEANUP'
-#!/bin/bash
-# Auto-cleanup script for temporary files
-
-FILES=(
-    "homelab.sh"
-    "homelab.js"
-    "create.sh"
-    "error-handler.sh"
-    "logging-utils.sh"
-    "parse-service-config.sh"
-    "setup-service-env.sh"
-    "generate-scripts.sh"
-    "generate-run-template.sh"
-    "generate-diagnose-template.sh"
-    "display-summary.sh"
-    "cleanup.sh"
-)
-
-echo ""
-echo "[CLEAN] Removing temporary files..."
-for file in "${FILES[@]}"; do
-    if [[ -f "$file" ]]; then
-        rm -f "$file"
-        echo "  - Removed $file"
-    fi
-done
-echo "[DONE] Cleanup complete."
-EOF_CLEANUP
-
-chmod +x cleanup.sh
+# Create an alias for backward compatibility
+if [[ ! -f "homelab.sh" ]]; then
+    ln -s homelab-orchestrator.sh homelab.sh
+fi
 
 # Check if we're running interactively
 if [[ -t 0 ]]; then
     # Running interactively, launch homelab.sh directly
     echo "[START] Running Homepod Creator..."
     ./homelab.sh
-    ./cleanup.sh
 else
     # Not running interactively (piped), save scripts and provide instructions
     echo "[NOTICE] Interactive mode required for configuration."
@@ -116,7 +99,9 @@ else
     echo "  ./cleanup.sh"
     echo ""
     echo "Or manually:"
-    echo "  rm -f ${FILES[*]} cleanup.sh"
+    printf "  rm -f "
+    printf '%s ' "${FILES[@]}"
+    echo "homelab.sh"
     echo ""
     echo "[DONE] Download complete. Ready for interactive mode."
 fi
