@@ -62,9 +62,6 @@ FILES=(
     "generate-run-template.sh"
     "generate-diagnose-template.sh"
     "display-summary.sh"
-    
-    # Cleanup script
-    "cleanup.sh"
 )
 
 echo "[FETCH] Downloading core files into: $WORKDIR"
@@ -75,6 +72,43 @@ done
 
 # Make all scripts executable
 chmod +x *.sh
+
+# Create cleanup script inline
+cat > cleanup.sh << 'EOF_CLEANUP'
+#!/bin/bash
+# Auto-cleanup script for temporary files
+
+# Define all files that should be cleaned up
+FILES=(
+    "homelab-orchestrator.sh"
+    "user-interface.sh"
+    "config-builder.sh"
+    "homelab.js"
+    "create.sh"
+    "error-handler.sh"
+    "logging-utils.sh"
+    "parse-service-config.sh"
+    "setup-service-env.sh"
+    "generate-scripts.sh"
+    "generate-run-template.sh"
+    "generate-diagnose-template.sh"
+    "display-summary.sh"
+    "homelab.sh"
+    "cleanup.sh"
+)
+
+echo ""
+echo "[CLEAN] Removing temporary files..."
+for file in "${FILES[@]}"; do
+    if [[ -f "$file" ]]; then
+        rm -f "$file"
+        echo "  - Removed $file"
+    fi
+done
+echo "[DONE] Cleanup complete."
+EOF_CLEANUP
+
+chmod +x cleanup.sh
 
 # Create an alias for backward compatibility
 if [[ ! -f "homelab.sh" ]]; then
@@ -97,11 +131,6 @@ else
     echo ""
     echo "When finished, clean up with:"
     echo "  ./cleanup.sh"
-    echo ""
-    echo "Or manually:"
-    printf "  rm -f "
-    printf '%s ' "${FILES[@]}"
-    echo "homelab.sh"
     echo ""
     echo "[DONE] Download complete. Ready for interactive mode."
 fi
