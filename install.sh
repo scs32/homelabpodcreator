@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "[INFO] Installing and launching Homepod Creator (Gen 3)..."
+echo "[INFO] Installing and launching Homepod Creator (Gen 3.5)..."
 
 WORKDIR="$(pwd)"
 REPO_BASE_URL="https://raw.githubusercontent.com/scs32/homelabpodcreator/main"
@@ -40,13 +40,29 @@ else
   echo "[OK] jq is already installed."
 fi
 
-# --- Download homelab files ---
-echo "[FETCH] Downloading core files into: $WORKDIR"
-curl -fsSL "$REPO_BASE_URL/homelab.sh" -o homelab.sh
-curl -fsSL "$REPO_BASE_URL/create.sh"  -o create.sh
-curl -fsSL "$REPO_BASE_URL/homelab.js" -o homelab.js
+# --- Download all files ---
+FILES=(
+    "homelab.sh"                      # Main orchestrator (unchanged)
+    "homelab.js"                      # Service definitions (unchanged)
+    "create.sh"                       # Replacement for original create.sh
+    "error-handler.sh"                # Error handling utility
+    "logging-utils.sh"                # Logging utility
+    "parse-service-config.sh"         # JSON parsing
+    "setup-service-env.sh"            # Environment setup
+    "generate-scripts.sh"             # Script generation coordinator
+    "generate-run-template.sh"        # Run script generator
+    "generate-diagnose-template.sh"   # Diagnose script generator
+    "display-summary.sh"              # Summary display
+)
 
-chmod +x homelab.sh
+echo "[FETCH] Downloading core files into: $WORKDIR"
+for file in "${FILES[@]}"; do
+    echo "  - Downloading $file..."
+    curl -fsSL "$REPO_BASE_URL/$file" -o "$file"
+done
+
+# Make all scripts executable
+chmod +x *.sh
 
 # --- Launch homelab.sh ---
 echo "[START] Running Homepod Creator..."
@@ -54,6 +70,6 @@ echo "[START] Running Homepod Creator..."
 
 # --- Clean up ---
 echo "[CLEAN] Removing temporary files..."
-rm -f homelab.sh create.sh homelab.js
+rm -f "${FILES[@]}"
 
 echo "[DONE] Setup complete and system cleaned."
