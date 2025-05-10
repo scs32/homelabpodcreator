@@ -44,9 +44,9 @@ setup_service_environment() {
     log_info "Creating volume directories"
     create_volume_directories "$volumes_json" "$puid" "$pgid"
     
-    # Set working directory
-    cd "$service_dir"
-    log_info "Changed to service directory: $service_dir"
+    # Store the working directory for reference (but don't change to it)
+    # This allows scripts to be generated in the service directory without changing context
+    log_info "Service directory prepared: $service_dir"
 }
 
 # Create all volume directories with proper ownership
