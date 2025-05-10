@@ -42,17 +42,17 @@ fi
 
 # --- Download all files ---
 FILES=(
-    "homelab.sh"                      # Main orchestrator (unchanged)
-    "homelab.js"                      # Service definitions (unchanged)
-    "create.sh"                       # Replacement for original create.sh
-    "error-handler.sh"                # Error handling utility
-    "logging-utils.sh"                # Logging utility
-    "parse-service-config.sh"         # JSON parsing
-    "setup-service-env.sh"            # Environment setup
-    "generate-scripts.sh"             # Script generation coordinator
-    "generate-run-template.sh"        # Run script generator
-    "generate-diagnose-template.sh"   # Diagnose script generator
-    "display-summary.sh"              # Summary display
+    "homelab.sh"
+    "homelab.js"
+    "create.sh"
+    "error-handler.sh"
+    "logging-utils.sh"
+    "parse-service-config.sh"
+    "setup-service-env.sh"
+    "generate-scripts.sh"
+    "generate-run-template.sh"
+    "generate-diagnose-template.sh"
+    "display-summary.sh"
 )
 
 echo "[FETCH] Downloading core files into: $WORKDIR"
@@ -64,26 +64,59 @@ done
 # Make all scripts executable
 chmod +x *.sh
 
+# Create a cleanup script that will be run automatically when homelab.sh completes
+cat > cleanup.sh << 'EOF_CLEANUP'
+#!/bin/bash
+# Auto-cleanup script for temporary files
+
+FILES=(
+    "homelab.sh"
+    "homelab.js"
+    "create.sh"
+    "error-handler.sh"
+    "logging-utils.sh"
+    "parse-service-config.sh"
+    "setup-service-env.sh"
+    "generate-scripts.sh"
+    "generate-run-template.sh"
+    "generate-diagnose-template.sh"
+    "display-summary.sh"
+    "cleanup.sh"
+)
+
+echo ""
+echo "[CLEAN] Removing temporary files..."
+for file in "${FILES[@]}"; do
+    if [[ -f "$file" ]]; then
+        rm -f "$file"
+        echo "  - Removed $file"
+    fi
+done
+echo "[DONE] Cleanup complete."
+EOF_CLEANUP
+
+chmod +x cleanup.sh
+
 # Check if we're running interactively
 if [[ -t 0 ]]; then
     # Running interactively, launch homelab.sh directly
     echo "[START] Running Homepod Creator..."
     ./homelab.sh
-    echo "[CLEAN] Removing temporary files..."
-    rm -f "${FILES[@]}"
-    echo "[DONE] Setup complete and system cleaned."
+    ./cleanup.sh
 else
     # Not running interactively (piped), save scripts and provide instructions
     echo "[NOTICE] Interactive mode required for configuration."
     echo ""
     echo "Files downloaded to: $WORKDIR"
     echo ""
-    echo "To continue, run the following commands:"
-    echo "  cd $WORKDIR"
+    echo "To continue, run:"
     echo "  ./homelab.sh"
     echo ""
-    echo "After you're done, clean up with:"
-    echo "  rm -f ${FILES[*]}"
+    echo "When finished, clean up with:"
+    echo "  ./cleanup.sh"
+    echo ""
+    echo "Or manually:"
+    echo "  rm -f ${FILES[*]} cleanup.sh"
     echo ""
     echo "[DONE] Download complete. Ready for interactive mode."
 fi
