@@ -64,12 +64,26 @@ done
 # Make all scripts executable
 chmod +x *.sh
 
-# --- Launch homelab.sh ---
-echo "[START] Running Homepod Creator..."
-./homelab.sh
-
-# --- Clean up ---
-echo "[CLEAN] Removing temporary files..."
-rm -f "${FILES[@]}"
-
-echo "[DONE] Setup complete and system cleaned."
+# Check if we're running interactively
+if [[ -t 0 ]]; then
+    # Running interactively, launch homelab.sh directly
+    echo "[START] Running Homepod Creator..."
+    ./homelab.sh
+    echo "[CLEAN] Removing temporary files..."
+    rm -f "${FILES[@]}"
+    echo "[DONE] Setup complete and system cleaned."
+else
+    # Not running interactively (piped), save scripts and provide instructions
+    echo "[NOTICE] Interactive mode required for configuration."
+    echo ""
+    echo "Files downloaded to: $WORKDIR"
+    echo ""
+    echo "To continue, run the following commands:"
+    echo "  cd $WORKDIR"
+    echo "  ./homelab.sh"
+    echo ""
+    echo "After you're done, clean up with:"
+    echo "  rm -f ${FILES[*]}"
+    echo ""
+    echo "[DONE] Download complete. Ready for interactive mode."
+fi
