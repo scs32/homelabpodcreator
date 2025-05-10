@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Store the original directory where scripts are located
+SCRIPT_DIR="$(pwd)"
+
 # Load utilities
-source ./error-handler.sh
-source ./logging-utils.sh
+source "$SCRIPT_DIR/error-handler.sh"
+source "$SCRIPT_DIR/logging-utils.sh"
 
 # Main entry point for service creation
 main() {
@@ -21,23 +24,23 @@ main() {
     fi
     
     # Save config for debugging
-    echo "$config_json" > ./.last-config.json
+    echo "$config_json" > "$SCRIPT_DIR/.last-config.json"
     
     # Parse basic service info
-    source ./parse-service-config.sh
+    source "$SCRIPT_DIR/parse-service-config.sh"
     local service_info
     service_info=$(parse_service_config "$config_json")
     
     # Create service directory structure
-    source ./setup-service-env.sh
+    source "$SCRIPT_DIR/setup-service-env.sh"
     setup_service_environment "$service_info"
     
     # Generate all management scripts
-    source ./generate-scripts.sh
+    source "$SCRIPT_DIR/generate-scripts.sh"
     generate_all_scripts "$service_info"
     
     # Display completion message
-    source ./display-summary.sh
+    source "$SCRIPT_DIR/display-summary.sh"
     display_service_summary "$service_info"
     
     log_info "Service deployment completed successfully"
