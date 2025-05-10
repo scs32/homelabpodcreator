@@ -205,3 +205,10 @@ done
 # Pipe JSON into create.sh
 bash "$SCRIPT_DIR/create.sh" < "$TMP_JSON"
 rm "$TMP_JSON"
+
+# Call cleanup script if it exists
+if [[ -f "$SCRIPT_DIR/cleanup.sh" ]]; then
+    echo ""
+    echo "Running cleanup..."
+    bash "$SCRIPT_DIR/cleanup.sh"
+fi
