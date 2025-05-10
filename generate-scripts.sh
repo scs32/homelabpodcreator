@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Get the script directory (where all our scripts are)
+SCRIPT_DIR="${SCRIPT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
+
 # Generate all management scripts for the service
 generate_all_scripts() {
     local service_info="$1"
@@ -41,7 +44,7 @@ generate_run_script() {
     local primary_port=$(jq -r '.primary_port' <<<"$service_info")
     
     # Load the run script template
-    source ./generate-run-template.sh
+    source "$SCRIPT_DIR/generate-run-template.sh"
     
     # Generate content
     local run_content
@@ -155,7 +158,7 @@ generate_diagnose_script() {
     local primary_port=$(jq -r '.primary_port' <<<"$service_info")
     
     # Load the diagnose script template
-    source ./generate-diagnose-template.sh
+    source "$SCRIPT_DIR/generate-diagnose-template.sh"
     
     # Generate content
     local diagnose_content
