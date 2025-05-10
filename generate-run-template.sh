@@ -74,22 +74,37 @@ sleep 5
     script_content+='# Start main service
 echo "Starting '"$service"'..."
 podman ps --format '"'"'{{.Names}}'"'"' | grep -q "^'"$service"'$" || podman run -d \
-  --name '"$service"' \
-'
+  --name '"$service"''
 
     # Add network configuration
     if [[ "$include_ts" == "yes" ]]; then
-        script_content+="  --network container:tailscale-$service \\"$'\n'
+        script_content+=' \
+  --network container:tailscale-'"$service"''
     fi
 
-    # Add environment variables
-    script_content+=$(add_environment_variables "$service_info")
+    # Add environment variables from service_info
+    local env_vars_json
+    env_vars_json=$(jq -c '.environment' <<<"$service_info")
+    
+    # Get all environment variables
+    while IFS= read -r env_pair; do
+        script_content+=' \
+  -e '"$env_pair"''
+    done < <(jq -r 'to_entries[] | "\(.key)=\"\(.value)\""' <<<"$env_vars_json")
 
-    # Add volume mounts
-    script_content+=$(add_volume_mounts "$service_info")
+    # Add volume mounts from service_info
+    local volumes_json
+    volumes_json=$(jq -c '.volumes' <<<"$service_info")
+    
+    # Get all volume mounts
+    while IFS= read -r volume_pair; do
+        script_content+=' \
+  -v '"$volume_pair"''
+    done < <(jq -r 'to_entries[] | "\(.value):\(.key)"' <<<"$volumes_json")
 
     # Complete the service container command
-    script_content+='  --restart '"$restart_policy"' \
+    script_content+=' \
+  --restart '"$restart_policy"' \
   '"$service_image"'
 
 echo "Waiting for '"$service"'..."
@@ -146,88 +161,20 @@ echo "Verifying services..."
 '
 
     # Add connectivity checks
-    script_content+=$(add_connectivity_checks "$include_npm" "$primary_port" "$service")
-
-    # Add results display
-    script_content+=$(add_results_display "$include_npm" "$primary_port" "$service_info" "$service")
-
-    # Add final troubleshooting note
-    script_content+='
-
-if [ "$SERVICE_READY" != "yes" ]; then
-  echo "Note: '"$service"' is not yet accessible."
-  echo "Run '"'"'./diagnose.sh'"'"' if the issue persists."
-fi
-'
-
-    # Output the complete script
-    echo "$script_content"
-}
-
-# Helper function to add environment variables
-add_environment_variables() {
-    local service_info="$1"
-    local env_vars_json
-    local output=""
-    
-    env_vars_json=$(jq -c '.environment' <<<"$service_info")
-    
-    # Get all environment variables
-    while IFS= read -r env_pair; do
-        output+="  -e $env_pair \\"$'\n'
-    done < <(jq -r 'to_entries[] | "\(.key)=\"\(.value)\""' <<<"$env_vars_json")
-    
-    echo "$output"
-}
-
-# Helper function to add volume mounts
-add_volume_mounts() {
-    local service_info="$1"
-    local volumes_json
-    local output=""
-    
-    volumes_json=$(jq -c '.volumes' <<<"$service_info")
-    
-    # Get all volume mounts
-    while IFS= read -r volume_pair; do
-        output+="  -v $volume_pair \\"$'\n'
-    done < <(jq -r 'to_entries[] | "\(.value):\(.key)"' <<<"$volumes_json")
-    
-    echo "$output"
-}
-
-# Helper function to add connectivity checks
-add_connectivity_checks() {
-    local include_npm="$1"
-    local primary_port="$2"
-    local service="$3"
-    local output=""
-    
     if [[ "$include_npm" == "yes" ]]; then
-        output+='# Check NPM connectivity
+        script_content+='# Check NPM connectivity
 NPM_READY=$(podman exec tailscale-'"$service"' wget -q --spider --timeout=5 http://localhost:81 2>/dev/null && echo "yes" || echo "no")
 '
     fi
     
     if [[ -n "$primary_port" ]]; then
-        output+='# Check service connectivity  
+        script_content+='# Check service connectivity  
 SERVICE_READY=$(podman exec tailscale-'"$service"' wget -q --spider --timeout=5 http://localhost:'"$primary_port"' 2>/dev/null && echo "yes" || echo "no")
 '
     fi
-    
-    echo "$output"
-}
 
-# Helper function to add results display
-add_results_display() {
-    local include_npm="$1"
-    local primary_port="$2"
-    local service_info="$3"
-    local service="$4"
-    local output=""
-    
-    # Start display section
-    output+='# Display results
+    # Add results display
+    script_content+='# Display results
 echo ""
 echo "========================================"
 echo "  '"$service"' Deployment Complete"
@@ -243,7 +190,7 @@ echo "Service Status:"
 
     # Add NPM status
     if [[ "$include_npm" == "yes" ]]; then
-        output+='if [ "$NPM_READY" = "yes" ]; then
+        script_content+='if [ "$NPM_READY" = "yes" ]; then
   echo "  Nginx Proxy Manager: ✓ Ready"
 else
   echo "  Nginx Proxy Manager: × Not ready"
@@ -253,7 +200,7 @@ fi
 
     # Add service status
     if [[ -n "$primary_port" ]]; then
-        output+='if [ "$SERVICE_READY" = "yes" ]; then
+        script_content+='if [ "$SERVICE_READY" = "yes" ]; then
   echo "  '"$service"': ✓ Ready"
 else
   echo "  '"$service"': × Not ready"
@@ -262,60 +209,56 @@ fi
     fi
 
     # Add access URLs
-    output+='echo ""
+    script_content+='echo ""
 echo "Access URLs:"
 '
 
     if [[ "$include_npm" == "yes" ]]; then
-        output+='echo "  NPM Admin: http://$TS_FQDN:81"
+        script_content+='echo "  NPM Admin: http://$TS_FQDN:81"
 '
     fi
 
     if [[ -n "$primary_port" ]]; then
-        output+='echo "  '"$service"': http://$TS_FQDN:'"$primary_port"'"
+        script_content+='echo "  '"$service"': http://$TS_FQDN:'"$primary_port"'"
 '
     fi
 
     # Add multiple ports if they exist
-    output+=$(add_additional_ports "$service_info" "$service")
-
-    # Add direct IP access
-    output+='echo ""
-echo "Direct IP Access:"
-echo "  http://$TS_IP:81 (NPM)"
-'
-
-    if [[ -n "$primary_port" ]]; then
-        output+='echo "  http://$TS_IP:'"$primary_port"' ('"$service"')"
-'
-    fi
-
-    output+='echo ""'
-    
-    echo "$output"
-}
-
-# Helper function to add additional ports
-add_additional_ports() {
-    local service_info="$1"
-    local service="$2"
-    local output=""
-    
-    # Check if there are additional ports
     local port_count
     port_count=$(jq '.ports | length' <<<"$service_info")
     
     if [[ $port_count -gt 1 ]]; then
-        output+='echo ""
+        script_content+='echo ""
 echo "Additional Ports:"
 '
         
         # Get all ports except the first one
         while IFS= read -r port; do
-            output+='echo "  - Port '"$port"': http://$TS_FQDN:'"$port"'"
+            script_content+='echo "  - Port '"$port"': http://$TS_FQDN:'"$port"'"
 '
         done < <(jq -r '.ports | keys[1:][]' <<<"$service_info")
     fi
-    
-    echo "$output"
+
+    # Add direct IP access
+    script_content+='echo ""
+echo "Direct IP Access:"
+echo "  http://$TS_IP:81 (NPM)"
+'
+
+    if [[ -n "$primary_port" ]]; then
+        script_content+='echo "  http://$TS_IP:'"$primary_port"' ('"$service"')"
+'
+    fi
+
+    # Add final troubleshooting note
+    script_content+='echo ""
+
+if [ "$SERVICE_READY" != "yes" ]; then
+  echo "Note: '"$service"' is not yet accessible."
+  echo "Run '"'"'./diagnose.sh'"'"' if the issue persists."
+fi
+'
+
+    # Output the complete script
+    echo "$script_content"
 }
